@@ -2,8 +2,8 @@
 venv/
 remove_dissertacao/
 DadosGravimetricos_Unidos.xlsx
-disturbios.xlsx
 Pontos_Gravidade_PPTE
+.gitignore
 
 # Bytecode / cache
 __pycache__/

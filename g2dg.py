@@ -252,7 +252,27 @@ def process_with_grid(grav_df, lons, lats, gridN, opts):
     ]
     df['gamma_surface_zero_tide_mGal'] = df['gamma_surface_mean_tide_mGal'] - delta_pt
     df['disturbio_g_zero_tide_mGal'] = df['g_atm_zero_tide_mGal'] - df['gamma_surface_zero_tide_mGal']
+    rename_map = {
+        'lat_tide_free': 'Geodetic Lat (Tide Free)',
+        'lon_tide_free': 'Geodetic Lon (Tide Free)',
+        'h_tide_free': 'h (Tide Free)',
+        'g_mean_tide': 'g (mean tide)',
+        'N': 'N (Zero Tide)',
+        'lat_geocentrica_deg': 'Geocentric Lat (Tide Free)',
+        'h_mean_tide': 'h (Mean Tide)',
+        'H_zero_tide': 'H (Zero Tide)',
+        'H_mean_tide': 'H (Mean Tide)',
+        'delta_g_atm_mt_mGal': 'Atm Correction (Mean Tide)',
+        'g_atm_mean_tide_mGal': 'g with atm correction (Mean Tide)',
+        'g_atm_zero_tide_mGal': 'g with atm correction (Zero Tide)',
+        'gamma0_mGal': 'Normal gravity on the ellipsoid (Tide Free).',
+        'gamma_surface_mean_tide_mGal': 'Normal Gravity on the surface (Mean Tide)',
+        'gamma_surface_zero_tide_mGal': 'Normal gravity on the surface (Zero Tide).',
+        'disturbio_g_zero_tide_mGal': 'Gravity disturbance (Zero Tide).'
+    }
+    df = df.rename(columns=rename_map)
     return df
+
 
 
 # =============================
@@ -293,7 +313,7 @@ class App(tk.Tk):
         self.geometry("720x500")
         self.grav_path = tk.StringVar()
         self.grid_path = tk.StringVar()
-        self.out_path  = tk.StringVar()
+        self.out_path  = tk.StringVar(value="GravityDisturbance_Output.xlsx")
         self.colmap = {
             'ID': tk.StringVar(value='ID'),
             'lat_tide_free': tk.StringVar(value='lat_tide_free'),
