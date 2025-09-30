@@ -2,9 +2,9 @@ Conferir o N do SAM_GEOID23 que é Zero Tide para ver se tem que haver mudanças
 
 Conferir se o termo de grau zero de -0.93 do SAM_GEOID23 implica em algo
 
-h_meantide ta igual ao h_tidefree, provavelmente não foi feita a correção de maré nele.
-
-os gammas estão errados (o gamma_0 no elipsoide ta errado mas não deveria, conferir a equação)
+Conferir quais valores e fórmulas estão certas e quais precisam de modificações
+    h_meantide ta igual ao h_tidefree, provavelmente não foi feita a correção de maré nele.
+    os gammas estão errados (o gamma_0 no elipsoide ta errado mas não deveria, conferir a equação)
 
 faltou a coluna fonte no arquivo de entrada.
 

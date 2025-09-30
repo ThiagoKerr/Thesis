@@ -27,6 +27,7 @@ from typing import Tuple, Dict
 import numpy as np
 import pandas as pd
 
+
 # =============================
 # CONSTANTES
 # =============================
@@ -304,6 +305,153 @@ def read_grav_file(path: str) -> pd.DataFrame:
 
     return df
 
+def write_named_parameters(workbook, worksheet):
+    # escreve cabeçalho e valores na aba 'parametros' e cria nomes definidos
+    params = [
+        ("A_WGS84", A_WGS84),
+        ("F", F),
+        ("E2", E2),
+        ("G_E", G_E),
+        ("G_P", G_P),
+        ("K", K),
+        ("MS2_TO_MGAL", MS2_TO_MGAL),
+        ("FA_GRAD_1", FA_GRAD_1),
+        ("FA_GRAD_2", FA_GRAD_2),
+        ("ATM_DELTA0_MGAL", ATM_DELTA0_MGAL),
+        ("ATM_SCALE_M", ATM_SCALE_M),
+        ("PT_C0_MGAL", PT_C0_MGAL),
+    ]
+    worksheet.write(0, 0, "Parametro")
+    worksheet.write(0, 1, "Valor")
+    for i, (name, val) in enumerate(params, start=1):
+        worksheet.write(i, 0, name)
+        worksheet.write_number(i, 1, float(val))
+        # define nome global apontando para a célula de valor (linha i+1 em Excel 1-based)
+        workbook.define_name(f"{name}", f"=parametros!$B${i+1}")
+
+
+def write_with_constants_sheet(out_df, writer):
+    """
+    Cria:
+      - 'resultado' com dados + fórmulas
+      - 'constantes' com parâmetros numéricos visíveis
+    """
+    wb = writer.book
+    ws_res = wb.add_worksheet("resultado")
+    ws_cst = wb.add_worksheet("constantes")
+
+    # ==========================
+    # 1. escreve constantes na aba 'constantes'
+    # ==========================
+    params = [
+        ("A_WGS84", A_WGS84),
+        ("E2", E2),
+        ("G_E", G_E),
+        ("K", K),
+        ("MS2_TO_MGAL", MS2_TO_MGAL),
+        ("FA_GRAD_1", FA_GRAD_1),
+        ("FA_GRAD_2", FA_GRAD_2),
+        ("ATM_DELTA0_MGAL", ATM_DELTA0_MGAL),
+        ("ATM_SCALE_M", ATM_SCALE_M),
+        ("PT_C0_MGAL", PT_C0_MGAL),
+    ]
+    ws_cst.write(0, 0, "Parametro")
+    ws_cst.write(0, 1, "Valor")
+    for i, (name, val) in enumerate(params, start=1):
+        ws_cst.write(i, 0, name)
+        ws_cst.write_number(i, 1, float(val))
+
+    # Função auxiliar: retorna referência absoluta na aba constantes
+    def ref_const(row):
+        return f"constantes!$B${row}"
+
+    # refs
+    A_WGS84_c   = ref_const(1+1)   # linha 2
+    E2_c        = ref_const(2+1)   # linha 3
+    G_E_c       = ref_const(3+1)
+    K_c         = ref_const(4+1)
+    MS2_c       = ref_const(5+1)
+    FA1_c       = ref_const(6+1)
+    FA2_c       = ref_const(7+1)
+    ATM0_c      = ref_const(8+1)
+    ATMscale_c  = ref_const(9+1)
+    PT_c        = ref_const(10+1)
+
+    # ==========================
+    # 2. cabeçalhos da aba resultado
+    # ==========================
+    headers = [
+        "ID","Geodetic Lat (Tide Free)","Geodetic Lon (Tide Free)",
+        "h (Tide Free)","g (mean tide)","N (Zero Tide)",
+        "Geocentric Lat (Tide Free)",
+        "h (Mean Tide)","H (Zero Tide)","H (Mean Tide)",
+        "Atm Correction (Mean Tide)","g with atm correction (Mean Tide)",
+        "delta_g_PT (mGal)","g with atm correction (Zero Tide)",
+        "Normal gravity on the ellipsoid (Tide Free).",
+        "Normal Gravity on the surface (Mean Tide)",
+        "Normal gravity on the surface (Zero Tide).",
+        "Gravity disturbance (Zero Tide)."
+    ]
+    for j, h in enumerate(headers):
+        ws_res.write(0, j, h)
+
+    # ==========================
+    # 3. escreve dados + fórmulas
+    # ==========================
+    cols_in = [
+        "ID",
+        "Geodetic Lat (Tide Free)",
+        "Geodetic Lon (Tide Free)",
+        "h (Tide Free)",
+        "g (mean tide)",
+        "N (Zero Tide)",
+    ]
+    missing = [c for c in cols_in if c not in out_df.columns]
+    if missing:
+        raise KeyError(f"Faltam colunas na saída: {missing}")
+
+    n = len(out_df)
+    for i in range(n):
+        r = i + 1  # linha em Excel
+        ws_res.write(r, 0, out_df.iloc[i][cols_in[0]])
+        ws_res.write_number(r, 1, float(out_df.iloc[i][cols_in[1]]))
+        ws_res.write_number(r, 2, float(out_df.iloc[i][cols_in[2]]))
+        ws_res.write_number(r, 3, float(out_df.iloc[i][cols_in[3]]))
+        ws_res.write_number(r, 4, float(out_df.iloc[i][cols_in[4]]))
+        ws_res.write_number(r, 5, float(out_df.iloc[i][cols_in[5]]))
+
+    # Fórmulas
+    for i in range(2, n+2):
+        lat = f"$B${i}"
+        lon = f"$C${i}"
+        h   = f"$D${i}"
+        g   = f"$E${i}"
+        N   = f"$F${i}"
+
+        Nphi = f"{A_WGS84_c}/SQRT(1-{E2_c}*SIN(RADIANS({lat}))^2)"
+        X = f"({Nphi}+{h})*COS(RADIANS({lat}))*COS(RADIANS({lon}))"
+        Y = f"({Nphi}+{h})*COS(RADIANS({lat}))*SIN(RADIANS({lon}))"
+        Z = f"({Nphi}*(1-{E2_c})+{h})*SIN(RADIANS({lat}))"
+
+        ws_res.write_formula(i-1, 6,  f"=DEGREES(ATAN2({Z},SQRT(({X})^2+({Y})^2)))")
+        ws_res.write_formula(i-1, 7,  f"={h}")               # h_mean
+        ws_res.write_formula(i-1, 8,  f"=D{i}-F{i}")         # H_zero
+        ws_res.write_formula(i-1, 9,  f"=I{i}")              # H_mean
+        ws_res.write_formula(i-1,10, f"={ATM0_c}*EXP(-MAX(0,J{i})/{ATMscale_c})")
+        ws_res.write_formula(i-1,11, f"=E{i}+K{i}")
+        ws_res.write_formula(i-1,12, f"={PT_c}*(1-1.5*SIN(RADIANS({lat}))^2)")
+        ws_res.write_formula(i-1,13, f"=L{i}-M{i}")
+        ws_res.write_formula(i-1,14, f"={G_E_c}*(1+{K_c}*SIN(RADIANS({lat}))^2)/"
+                                     f"SQRT(1-{E2_c}*SIN(RADIANS({lat}))^2)*{MS2_c}")
+        ws_res.write_formula(i-1,15, f"=O{i}-{FA1_c}*J{i}+{FA2_c}*J{i}^2")
+        ws_res.write_formula(i-1,16, f"=P{i}-M{i}")
+        ws_res.write_formula(i-1,17, f"=N{i}-Q{i}")
+
+    ws_res.freeze_panes(1, 1)
+    ws_res.autofilter(0, 0, n, len(headers)-1)
+
+
+
 
 
 class App(tk.Tk):
@@ -366,8 +514,12 @@ class App(tk.Tk):
                 )
 
             out_df = process_with_grid(grav_df, lons, lats, gridN, opts={})
-            with pd.ExcelWriter(self.out_path.get(), engine='openpyxl') as writer:
-                out_df.to_excel(writer, index=False)
+            with pd.ExcelWriter(self.out_path.get(), engine='xlsxwriter') as writer:
+                write_with_constants_sheet(out_df, writer)
+
+
+
+
 
             messagebox.showinfo("OK", f"Arquivo gerado:\n{self.out_path.get()}")
         except Exception as e:
