@@ -1,0 +1,15 @@
+N possivelmente errado no código. (ACHO QUE NO ISG TEM SOMENTE O QUASI-GEOIDE DO SAM)
+
+h_meantide ta igual ao h_tidefree, provavelmente não foi feita a correção de maré nele.
+
+H_Zero tide ta errado por causa do N que ta errado
+
+H_mean tide errado pq o zero tide ta errado.
+
+correção atmosferica ta errado por causa do H_mean tide tb, e o nome dele ta esquisito, deve-se arrumar.
+
+g com correção atmosferica ta esquisito tb pela mesma causa acima.
+
+os gammas estão errados (o gamma_0 no elipsoide ta errado mas não deveria, conferir a equação)
+
+faltou a coluna fonte no arquivo de entrada.

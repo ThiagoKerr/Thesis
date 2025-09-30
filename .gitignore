@@ -1,0 +1,34 @@
+.venv/ 
+venv/
+remove_dissertacao/
+DadosGravimetricos_Unidos.xlsx
+disturbios.xlsx
+Pontos_Gravidade_PPTE
+
+# Bytecode / cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Sistema / editor
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Notebooks e checkpoints
+.ipynb_checkpoints/
+
+# Logs temporários
+*.log
+
+# Dados / saídas grandes (ajuste conforme sua pasta/nomes)
+*.tif
+*.tiff
+*.las
+*.laz
+*.zip
+*.rar
+
+# Credenciais/.env
+.env
+*.pem
