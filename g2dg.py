@@ -126,56 +126,39 @@ def process_with_grid(grav_df, lons, lats, gridN):
 # =============================
 # EXPORTAÇÃO PARA EXCEL
 # =============================
-def write_with_constants_sheet(out_df, writer):
+def write_with_constants_sheet(out_df, writer, progress_cb=None, progress_base=40.0, progress_span=60.0):
     """
     Cria:
       - 'resultado' com dados + FÓRMULAS (literais, em inglês: SIN/PI/ATAN/TAN).
       - 'constantes' apenas para visualização (não é referenciada nas fórmulas).
+
+    progress_cb(p): callback para atualizar a barra (0..100).
+    progress_base + progress_span: faixa de progresso consumida aqui.
     """
     wb = writer.book
     ws_res = wb.add_worksheet("resultado")
-    ws_cst = wb.add_worksheet("constantes")
-
-    # --- aba 'constantes' (visual) ---
-    visuais = [
-        ("Observação", "A planilha usa números literais pedidos nas fórmulas."),
-        ("a (m)", 6378137.0),
-        ("f", 1/298.257223563),
-        ("coef. lat. geocêntrica", 0.993305619977094),
-        ("coef. gravidade elipsóide s^2", "0.0052790414, 0.0000232718, 0.0000001262, 0.0000000007"),
-        ("coef. redução normal à altura", "0.00335281068118, 0.00344978600308"),
-        ("correção atmosférica", "0.874, 9.9e-5, 3.5625e-9"),
-        ("zero-tide (superfície)", "30.4, 91.2")
-    ]
-    ws_cst.write(0, 0, "Parâmetro")
-    ws_cst.write(0, 1, "Valor")
-    for i, (k, v) in enumerate(visuais, start=1):
-        ws_cst.write(i, 0, k)
-        if isinstance(v, (int, float)):
-            ws_cst.write_number(i, 1, float(v))
-        else:
-            ws_cst.write(i, 1, str(v))
 
     # --- cabeçalhos da aba 'resultado' ---
     headers = [
-        "ID",
-        "Geodetic Lat (Tide Free)",
-        "Geodetic Lon (Tide Free)",
-        "h (Tide Free)",
-        "g (mean tide)",
-        "N (Zero Tide)",
-        "Geocentric Lat (Tide Free)",            # G
-        "h (Mean Tide)",                         # H
-        "H (Zero Tide)",                         # I
-        "H (Mean Tide)",                         # J
-        "Atm Correction (Mean Tide)",            # K
-        "g with atm correction (Mean Tide)",     # L
-        "Normal gravity on the ellipsoid (Tide Free).",  # M
-        "Normal Gravity on the surface (Mean Tide)",     # N
-        "Normal gravity on the surface (Zero Tide).",    # O
-        "g with atm correction (Zero Tide)",     # P  <--- NOVA
-        "Gravity disturbance (Zero Tide).",      # Q  = P - O
-        "fonte"                                  # R  <--- cópia
+        "ID",                                        # A
+        "Geodetic Lat (Tide Free)",                 # B
+        "Geodetic Lon (Tide Free)",                 # C
+        "h (Tide Free)",                            # D
+        "h (Mean Tide)",                            # E  (NOVA)
+        "g (mean tide)",                            # F  (deslocou)
+        "N (Zero Tide)",                            # G  (deslocou)
+        "N (Tide Free)",                            # H
+        "Geocentric Lat (Tide Free)",               # I
+        "H (Tide Free)",                            # J
+        "H (Mean Tide)",                            # K
+        "Atm Correction (Mean Tide)",               # L
+        "g with atm correction (Mean Tide)",        # M
+        "Normal gravity on the ellipsoid (Tide Free).",  # N
+        "Normal Gravity on the surface (Mean Tide)",      # O  (AGORA usa h Mean Tide = E)
+        "Normal gravity on the surface (Zero Tide).",     # P
+        "g with atm correction (Zero Tide)",        # Q
+        "Gravity disturbance (Zero Tide).",         # R = Q - P
+        "fonte"                                     # S
     ]
     for j, h in enumerate(headers):
         ws_res.write(0, j, h)
@@ -194,62 +177,72 @@ def write_with_constants_sheet(out_df, writer):
     if missing:
         raise KeyError(f"Faltam colunas na saída: {missing}")
 
-    # escreve valores base (A..F) e a fonte (R)
+    # escreve valores base (A..G) e a fonte (S)
     n = len(out_df)
     for i in range(n):
         r = i + 1
-        ws_res.write(r, 0, out_df.iloc[i]["ID"])
-        ws_res.write_number(r, 1, float(out_df.iloc[i]["Geodetic Lat (Tide Free)"]))
-        ws_res.write_number(r, 2, float(out_df.iloc[i]["Geodetic Lon (Tide Free)"]))
-        ws_res.write_number(r, 3, float(out_df.iloc[i]["h (Tide Free)"]))
-        ws_res.write_number(r, 4, float(out_df.iloc[i]["g (mean tide)"]))
-        ws_res.write_number(r, 5, float(out_df.iloc[i]["N (Zero Tide)"]))
-        # coluna R (fonte)
-        ws_res.write(r, 17, str(out_df.iloc[i]["fonte"]) if pd.notna(out_df.iloc[i]["fonte"]) else "")
+        ws_res.write(r, 0, out_df.iloc[i]["ID"])                                   # A
+        ws_res.write_number(r, 1, float(out_df.iloc[i]["Geodetic Lat (Tide Free)"]))   # B
+        ws_res.write_number(r, 2, float(out_df.iloc[i]["Geodetic Lon (Tide Free)"]))   # C
+        ws_res.write_number(r, 3, float(out_df.iloc[i]["h (Tide Free)"]))              # D
+        # E será fórmula (h Mean Tide)
+        ws_res.write_number(r, 5, float(out_df.iloc[i]["g (mean tide)"]))              # F
+        ws_res.write_number(r, 6, float(out_df.iloc[i]["N (Zero Tide)"]))              # G
+        # coluna S (fonte)
+        ws_res.write(r, 18, str(out_df.iloc[i]["fonte"]) if pd.notna(out_df.iloc[i]["fonte"]) else "")
 
-    # --- fórmulas (usando funções em inglês: SIN/ATAN/TAN/PI) ---
+    # --- fórmulas (Excel em inglês) ---
+    incr = (progress_span / max(n, 1)) if progress_cb else None
+
     for i in range(2, n + 2):
-        lat = f"$B${i}"  # Geodetic Lat (deg)
-        h   = f"$D${i}"  # h tide free
-        N   = f"$F${i}"  # N
+        lat = f"$B${i}"   # Geodetic Lat (deg)  -> B
+        hTF = f"$D${i}"   # h (Tide Free)       -> D
 
-        # G: geocentric latitude
-        ws_res.write_formula(i-1, 6,  f"=ATAN(0.993305619977094*TAN({lat}*PI()/180))*180/PI()")
+        # I: Geocentric Latitude
+        ws_res.write_formula(i-1, 8,  f"=ATAN(0.993305619977094*TAN({lat}*PI()/180))*180/PI()")
 
-        # H: h mean tide
-        ws_res.write_formula(i-1, 7,  f"={h}-(1+0.3-0.6)*(-0.198*((3/2)*(SIN(G{i}*PI()/180)^2)-0.5))")
+        # E: h (Mean Tide)  [EXATO como pedido, adaptado p/ Excel; usa I (lat geocêntrica)]
+        ws_res.write_formula(i-1, 4,  f"={hTF}-(1+0.3-0.6)*(-0.198*((3/2)*(SIN(I{i}*PI()/180)^2)-0.5))")
 
-        # I: H zero tide
-        ws_res.write_formula(i-1, 8,  f"=D{i}-{N}")
+        # H: N (Tide Free)  (ajuste de posições; SIN usa I)
+        ws_res.write_formula(i-1, 7,  f"=G{i}-(0.3*(9.9-29.6*(SIN(I{i}*PI()/180))^2)/100)")
 
-        # J: H mean tide (ajuste adicional)
-        ws_res.write_formula(i-1, 9,  f"=I{i}-(-0.198*((3/2)*(SIN(G{i}*PI()/180)^2)-0.5))")
+        # J: H (Tide Free)  = h (Tide Free) - N (Tide Free)
+        ws_res.write_formula(i-1, 9,  f"=D{i}-H{i}")
 
-        # K: atmospheric correction
-        ws_res.write_formula(i-1,10, f"=0.874-(9.9*10^-5)*J{i}+(3.5625*10^-9)*J{i}^2")
+        # K: H (Mean Tide)  (mesma forma anterior; SIN usa I)
+        ws_res.write_formula(i-1,10, f"=J{i}-(1)*(-0.198*((3/2)*(SIN(I{i}*PI()/180)^2)-0.5))")
 
-        # L: g with atm correction (Mean Tide)
-        ws_res.write_formula(i-1,11, f"=E{i}+K{i}")
+        # L: Atmospheric correction (agora referenciando K)
+        ws_res.write_formula(i-1,11, f"=0.874-(9.9*10^-5)*K{i}+(3.5625*10^-9)*K{i}^2")
 
-        # M: gamma0 (ellipsoid) in mGal
-        ws_res.write_formula(i-1,12,
+        # M: g with atm correction (Mean Tide)  = g(mean) + atm
+        ws_res.write_formula(i-1,12, f"=F{i}+L{i}")
+
+        # N: gamma0 (ellipsoid) in mGal (mesma expressão)
+        ws_res.write_formula(i-1,13,
             f"=(9.7803267715*(1+0.0052790414*(SIN({lat}*PI()/180))^2+"
             f"0.0000232718*(SIN({lat}*PI()/180))^4+"
             f"0.0000001262*(SIN({lat}*PI()/180))^6+"
             f"0.0000000007*(SIN({lat}*PI()/180))^8))*10^5")
 
-        # N: normal gravity on surface (Mean Tide)
-        ws_res.write_formula(i-1,13,
-            f"=M{i}*(1-2*H{i}*(1+0.00335281068118-2*0.00335281068118*(SIN({lat}*PI()/180))*(SIN({lat}*PI()/180))+0.00344978600308)/6378137+(3*H{i}^2)/6378137^2)")
+        # O: Normal gravity on the surface (Mean Tide)
+        # *** ALTERAÇÃO 2: usar h (Mean Tide) = E{i} ***
+        ws_res.write_formula(i-1,14,
+            f"=N{i}*(1-2*E{i}*(1+0.00335281068118-2*0.00335281068118*(SIN({lat}*PI()/180))*(SIN({lat}*PI()/180))+0.00344978600308)/6378137+(3*E{i}^2)/6378137^2)")
 
-        # O: normal gravity on surface (Zero Tide)
-        ws_res.write_formula(i-1,14, f"=N{i}+(30.4-91.2*(SIN(G{i}*PI()/180))^2)*0.001")
+        # P: Normal gravity on the surface (Zero Tide)  (SIN usa I)
+        ws_res.write_formula(i-1,15, f"=O{i}+(30.4-91.2*(SIN(I{i}*PI()/180))^2)*0.001")
 
-        # P: g with atm correction (Zero Tide)  ← NOVA
-        ws_res.write_formula(i-1,15, f"=L{i}+(30.4-91.2*(SIN(G{i}*PI()/180))^2)*0.001")
+        # Q: g with atm correction (Zero Tide) = M + zero-tide corr (SIN usa I)
+        ws_res.write_formula(i-1,16, f"=M{i}+(30.4-91.2*(SIN(I{i}*PI()/180))^2)*0.001")
 
-        # Q: gravity disturbance (Zero Tide)  = g_zero - gamma_zero
-        ws_res.write_formula(i-1,16, f"=P{i}-O{i}")
+        # R: gravity disturbance (Zero Tide)  = Q - P
+        ws_res.write_formula(i-1,17, f"=Q{i}-P{i}")
+
+        if progress_cb and incr is not None:
+            progress_base += incr
+            progress_cb(min(100.0, progress_base))
 
     ws_res.freeze_panes(1, 1)
     ws_res.autofilter(0, 0, n, len(headers) - 1)
@@ -287,26 +280,40 @@ def read_grav_file(path: str) -> pd.DataFrame:
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("Processador Gravimetria + Geóide")
-        self.geometry("720x500")
+        self.title("Calculadora de distúrbios de gravidade")
+        self.geometry("720x540")
         self.grav_path = tk.StringVar()
         self.grid_path = tk.StringVar()
         self.out_path  = tk.StringVar(value="GravityDisturbance_Output.xlsx")
+        # progresso
+        self._progress_var = tk.DoubleVar(value=0.0)
+        self._progress_label_var = tk.StringVar(value="Progresso: 0%")
         self._build_ui()
 
     def _build_ui(self):
         pad={'padx':5,'pady':5}
         frm=ttk.Frame(self); frm.pack(fill='both',expand=True,**pad)
-        ttk.Label(frm,text="Arquivo Gravimetria").grid(row=0,column=0,sticky='w')
+        ttk.Label(frm,text="Dados de gravimetria (ID Lat Lon h g fonte)").grid(row=0,column=0,sticky='w')
         ttk.Entry(frm,textvariable=self.grav_path,width=60).grid(row=1,column=0,sticky='we')
         ttk.Button(frm,text="Procurar",command=self.browse_grav).grid(row=1,column=1)
-        ttk.Label(frm,text="Grade Geoidal (lon lat N)").grid(row=2,column=0,sticky='w')
+        ttk.Label(frm,text="Modelo geoidal do ISG (lon lat N)").grid(row=2,column=0,sticky='w')
         ttk.Entry(frm,textvariable=self.grid_path,width=60).grid(row=3,column=0,sticky='we')
         ttk.Button(frm,text="Procurar",command=self.browse_grid).grid(row=3,column=1)
         ttk.Label(frm,text="Saída XLSX").grid(row=4,column=0,sticky='w')
         ttk.Entry(frm,textvariable=self.out_path,width=60).grid(row=5,column=0,sticky='we')
         ttk.Button(frm,text="Salvar como",command=self.browse_out).grid(row=5,column=1)
         ttk.Button(frm,text="Gerar XLSX",command=self.run).grid(row=6,column=1,sticky='e')
+
+        # Barra de progresso + label
+        ttk.Label(frm, textvariable=self._progress_label_var).grid(row=7, column=0, sticky='w', pady=(10,0))
+        self._progress = ttk.Progressbar(frm, variable=self._progress_var, maximum=100)
+        self._progress.grid(row=8, column=0, columnspan=2, sticky='we')
+
+    def _set_progress(self, value: float):
+        value = max(0.0, min(100.0, float(value)))
+        self._progress_var.set(value)
+        self._progress_label_var.set(f"Progresso: {int(round(value))}%")
+        self.update_idletasks()
 
     def browse_grav(self):
         p=filedialog.askopenfilename()
@@ -320,13 +327,22 @@ class App(tk.Tk):
 
     def run(self):
         try:
+            self._set_progress(0)
             grav_df = read_grav_file(self.grav_path.get())
+            self._set_progress(10)
+
             lons, lats, gridN = read_geoid_grid_lon_lat_N(self.grid_path.get())
+            self._set_progress(20)
 
             out_df = process_with_grid(grav_df, lons, lats, gridN)
-            with pd.ExcelWriter(self.out_path.get(), engine='xlsxwriter') as writer:
-                write_with_constants_sheet(out_df, writer)
+            self._set_progress(40)
 
+            with pd.ExcelWriter(self.out_path.get(), engine='xlsxwriter') as writer:
+                write_with_constants_sheet(out_df, writer,
+                                           progress_cb=self._set_progress,
+                                           progress_base=40.0, progress_span=60.0)
+
+            self._set_progress(100)
             messagebox.showinfo("OK", f"Arquivo gerado:\n{self.out_path.get()}")
         except Exception as e:
             messagebox.showerror("Erro", str(e))

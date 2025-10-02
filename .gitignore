@@ -1,6 +1,7 @@
 .venv/ 
 venv/
 remove_dissertacao/
+Backup_Output_SemcompatibilizacaoMARES_NOva/
 DadosGravimetricos_Unidos.xlsx
 Pontos_Gravidade_PPTE
 .gitignore

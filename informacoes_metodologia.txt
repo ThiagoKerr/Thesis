@@ -1,0 +1,25 @@
+-------------------------------------------------OBJETIVOS------------------------------------------------------------------
+
+Conferir se o termo de grau zero de -0.93 do SAM_GEOID23 implica em algo
+
+---------------------------------------------------DUVIDAS--------------------------------------------------------------------------------------------
+Normal gravity on the surface (mean tide) utiliza h (mean tide) e normal gravity on the ellipsoid em tide free. Talvez utiliza o h em tide free para obter normal gravity on the
+ellipsoid em tide free e converte de tide free para zero tide.
+
+g with atm correction em zero tide utiliza o g with atm correction em mean tide e a latitude geocentrica em tide free. Não estão compatibilizados.
+
+Pelo que entendi latitudes podem ficar em tide-free pq o efeito horizontal de marés é desprezível. IERS conventions 2010 e Makinen (Permanent tide...)
+
+As conversões de marés sempre usam latitude geocêntrica em tide free, isto não agrega erros? Não da pra converter a latitude geocentrica para outro sistema de maré?
+
+
+----------------------------------------------------INFORMAÇÕES---------------------------------------------------------------------------------------------------
+EQUAÇÕES DE MARÉS UTILIZADAS:
+Para N - ekman 1989
+Para altitudes - Ruy 2020 e RAPP 1989
+
+LOVE NUMBERS
+
+h = 0.6
+
+k = 0.3
