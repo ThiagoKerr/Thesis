@@ -201,19 +201,19 @@ def write_with_constants_sheet(out_df, writer, progress_cb=None, progress_base=4
         # I: Geocentric Latitude
         ws_res.write_formula(i-1, 8,  f"=ATAN(0.993305619977094*TAN({lat}*PI()/180))*180/PI()")
 
-        # E: h (Mean Tide)  [EXATO como pedido, adaptado p/ Excel; usa I (lat geocêntrica)]
+        # E: h (Mean Tide)  
         ws_res.write_formula(i-1, 4,  f"={hTF}-(1+0.3-0.6)*(-0.198*((3/2)*(SIN(I{i}*PI()/180)^2)-0.5))")
 
-        # H: N (Tide Free)  (ajuste de posições; SIN usa I)
+        # H: N (Tide Free)  
         ws_res.write_formula(i-1, 7,  f"=G{i}-(0.3*(9.9-29.6*(SIN(I{i}*PI()/180))^2)/100)")
 
         # J: H (Tide Free)  = h (Tide Free) - N (Tide Free)
         ws_res.write_formula(i-1, 9,  f"=D{i}-H{i}")
 
-        # K: H (Mean Tide)  (mesma forma anterior; SIN usa I)
+        # K: H (Mean Tide) 
         ws_res.write_formula(i-1,10, f"=J{i}-(1)*(-0.198*((3/2)*(SIN(I{i}*PI()/180)^2)-0.5))")
 
-        # L: Atmospheric correction (agora referenciando K)
+        # L: Atmospheric correction 
         ws_res.write_formula(i-1,11, f"=0.874-(9.9*10^-5)*K{i}+(3.5625*10^-9)*K{i}^2")
 
         # M: g with atm correction (Mean Tide)  = g(mean) + atm
@@ -231,10 +231,10 @@ def write_with_constants_sheet(out_df, writer, progress_cb=None, progress_base=4
         ws_res.write_formula(i-1,14,
             f"=N{i}*(1-2*E{i}*(1+0.00335281068118-2*0.00335281068118*(SIN({lat}*PI()/180))*(SIN({lat}*PI()/180))+0.00344978600308)/6378137+(3*E{i}^2)/6378137^2)")
 
-        # P: Normal gravity on the surface (Zero Tide)  (SIN usa I)
+        # P: Normal gravity on the surface (Zero Tide)  
         ws_res.write_formula(i-1,15, f"=O{i}+(30.4-91.2*(SIN(I{i}*PI()/180))^2)*0.001")
 
-        # Q: g with atm correction (Zero Tide) = M + zero-tide corr (SIN usa I)
+        # Q: g with atm correction (Zero Tide) = M + zero-tide corr 
         ws_res.write_formula(i-1,16, f"=M{i}+(30.4-91.2*(SIN(I{i}*PI()/180))^2)*0.001")
 
         # R: gravity disturbance (Zero Tide)  = Q - P
